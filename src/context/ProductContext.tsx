@@ -59,75 +59,97 @@ export const ProductProvider: React.FC<ProductProviderProps> = ({ children }) =>
 
   // Helper function to validate hero product data
   const validateHeroProduct = (data: any): HeroProduct | null => {
-    if (!data || typeof data !== 'object') {
-      console.warn('Invalid hero product data: not an object', data);
+    try {
+      if (!data || typeof data !== 'object') {
+        console.warn('Invalid hero product data: not an object', data);
+        return null;
+      }
+
+      const requiredFields = ['id', 'title', 'description', 'image', 'ctaText', 'ctaLink', 'price'];
+      const missingFields = requiredFields.filter(field => !(field in data));
+      
+      if (missingFields.length > 0) {
+        console.warn('Invalid hero product data: missing required fields', missingFields, data);
+        return null;
+      }
+
+      // Validate types
+      if (typeof data.id !== 'string' || 
+          typeof data.title !== 'string' || 
+          typeof data.description !== 'string' || 
+          typeof data.image !== 'string' || 
+          typeof data.ctaText !== 'string' || 
+          typeof data.ctaLink !== 'string' || 
+          typeof data.price !== 'number') {
+        console.warn('Invalid hero product data: incorrect field types', data);
+        return null;
+      }
+
+      return data as HeroProduct;
+    } catch (err) {
+      console.error('Error validating hero product:', err);
       return null;
     }
-
-    const requiredFields = ['id', 'title', 'description', 'image', 'ctaText', 'ctaLink', 'price'];
-    const missingFields = requiredFields.filter(field => !(field in data));
-    
-    if (missingFields.length > 0) {
-      console.warn('Invalid hero product data: missing required fields', missingFields, data);
-      return null;
-    }
-
-    // Validate types
-    if (typeof data.id !== 'string' || 
-        typeof data.title !== 'string' || 
-        typeof data.description !== 'string' || 
-        typeof data.image !== 'string' || 
-        typeof data.ctaText !== 'string' || 
-        typeof data.ctaLink !== 'string' || 
-        typeof data.price !== 'number') {
-      console.warn('Invalid hero product data: incorrect field types', data);
-      return null;
-    }
-
-    return data as HeroProduct;
   };
 
   // Helper function to validate brand settings data
   const validateBrandSettings = (data: any): { brandName: string; tagline: string } | null => {
-    if (!data || typeof data !== 'object') {
-      console.warn('Invalid brand settings data: not an object', data);
+    try {
+      if (!data || typeof data !== 'object') {
+        console.warn('Invalid brand settings data: not an object', data);
+        return null;
+      }
+
+      if (typeof data.brandName !== 'string' || typeof data.tagline !== 'string') {
+        console.warn('Invalid brand settings data: incorrect field types', data);
+        return null;
+      }
+
+      return {
+        brandName: data.brandName,
+        tagline: data.tagline
+      };
+    } catch (err) {
+      console.error('Error validating brand settings:', err);
       return null;
     }
-
-    if (typeof data.brandName !== 'string' || typeof data.tagline !== 'string') {
-      console.warn('Invalid brand settings data: incorrect field types', data);
-      return null;
-    }
-
-    return {
-      brandName: data.brandName,
-      tagline: data.tagline
-    };
   };
 
   // Convert database row to Product type
   const dbProductToProduct = (dbProduct: any, collections: Collection[]): Product => {
-    const collection = collections.find(c => c.id === dbProduct.collection_id);
-    return {
-      id: dbProduct.id,
-      name: dbProduct.name,
-      price: dbProduct.price,
-      description: dbProduct.description,
-      image: dbProduct.image,
-      collection: collection?.name || 'Unknown',
-      featured: dbProduct.featured,
-      createdAt: dbProduct.created_at,
-    };
+    try {
+      const collection = collections.find(c => c.id === dbProduct.collection_id);
+      return {
+        id: dbProduct.id,
+        name: dbProduct.name || '',
+        price: dbProduct.price || 0,
+        description: dbProduct.description || '',
+        image: dbProduct.image || '',
+        collection: collection?.name || 'Unknown',
+        featured: dbProduct.featured || false,
+        createdAt: dbProduct.created_at,
+      };
+    } catch (err) {
+      console.error('Error converting database product:', err);
+      throw err;
+    }
   };
 
   // Convert database row to Collection type
-  const dbCollectionToCollection = (dbCollection: any): Collection => ({
-    id: dbCollection.id,
-    name: dbCollection.name,
-    description: dbCollection.description,
-    image: dbCollection.image,
-    createdAt: dbCollection.created_at,
-  });
+  const dbCollectionToCollection = (dbCollection: any): Collection => {
+    try {
+      return {
+        id: dbCollection.id,
+        name: dbCollection.name || '',
+        description: dbCollection.description || '',
+        image: dbCollection.image || '',
+        createdAt: dbCollection.created_at,
+      };
+    } catch (err) {
+      console.error('Error converting database collection:', err);
+      throw err;
+    }
+  };
 
   // Load data from Supabase
   const loadData = async () => {
@@ -141,9 +163,12 @@ export const ProductProvider: React.FC<ProductProviderProps> = ({ children }) =>
         .select('*')
         .order('name');
 
-      if (collectionsError) throw collectionsError;
+      if (collectionsError) {
+        console.error('Collections error:', collectionsError);
+        throw collectionsError;
+      }
 
-      const collectionsFormatted = collectionsData.map(dbCollectionToCollection);
+      const collectionsFormatted = (collectionsData || []).map(dbCollectionToCollection);
       setCollections(collectionsFormatted);
 
       // Load products
@@ -152,9 +177,12 @@ export const ProductProvider: React.FC<ProductProviderProps> = ({ children }) =>
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (productsError) throw productsError;
+      if (productsError) {
+        console.error('Products error:', productsError);
+        throw productsError;
+      }
 
-      const productsFormatted = productsData.map(p => dbProductToProduct(p, collectionsFormatted));
+      const productsFormatted = (productsData || []).map(p => dbProductToProduct(p, collectionsFormatted));
       setProducts(productsFormatted);
 
       // Load site settings with proper validation
@@ -162,9 +190,10 @@ export const ProductProvider: React.FC<ProductProviderProps> = ({ children }) =>
         .from('site_settings')
         .select('*');
 
-      if (settingsError) throw settingsError;
-
-      if (settingsData && settingsData.length > 0) {
+      if (settingsError) {
+        console.error('Settings error:', settingsError);
+        // Don't throw here, just log the error and continue with default settings
+      } else if (settingsData && settingsData.length > 0) {
         const heroProductSetting = settingsData.find(s => s.key === 'hero_product');
         const brandSetting = settingsData.find(s => s.key === 'brand_settings');
 
@@ -202,38 +231,81 @@ export const ProductProvider: React.FC<ProductProviderProps> = ({ children }) =>
 
   // Initialize data and real-time subscriptions
   useEffect(() => {
-    loadData();
-    setupBuildTriggers();
+    let mounted = true;
+    let subscriptions: any[] = [];
 
-    // Set up real-time subscriptions for UI updates
-    const productsSubscription = supabase
-      .channel('products-ui-updates')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'products' },
-        () => loadData()
-      )
-      .subscribe();
+    const initializeData = async () => {
+      try {
+        await loadData();
+        
+        if (!mounted) return;
 
-    const collectionsSubscription = supabase
-      .channel('collections-ui-updates')
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'collections' },
-        () => loadData()
-      )
-      .subscribe();
+        // Only set up subscriptions if data loaded successfully
+        try {
+          setupBuildTriggers();
 
-    const settingsSubscription = supabase
-      .channel('settings-ui-updates')
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'site_settings' },
-        () => loadData()
-      )
-      .subscribe();
+          // Set up real-time subscriptions for UI updates
+          const productsSubscription = supabase
+            .channel('products-ui-updates')
+            .on('postgres_changes', 
+              { event: '*', schema: 'public', table: 'products' },
+              () => {
+                if (mounted) {
+                  loadData();
+                }
+              }
+            )
+            .subscribe();
+
+          const collectionsSubscription = supabase
+            .channel('collections-ui-updates')
+            .on('postgres_changes',
+              { event: '*', schema: 'public', table: 'collections' },
+              () => {
+                if (mounted) {
+                  loadData();
+                }
+              }
+            )
+            .subscribe();
+
+          const settingsSubscription = supabase
+            .channel('settings-ui-updates')
+            .on('postgres_changes',
+              { event: '*', schema: 'public', table: 'site_settings' },
+              () => {
+                if (mounted) {
+                  loadData();
+                }
+              }
+            )
+            .subscribe();
+
+          subscriptions = [productsSubscription, collectionsSubscription, settingsSubscription];
+        } catch (subscriptionError) {
+          console.error('Error setting up subscriptions:', subscriptionError);
+          // Continue without real-time updates if subscriptions fail
+        }
+      } catch (initError) {
+        console.error('Error initializing data:', initError);
+        if (mounted) {
+          setError(initError instanceof Error ? initError.message : 'Failed to initialize application');
+          setLoading(false);
+        }
+      }
+    };
+
+    initializeData();
 
     return () => {
-      productsSubscription.unsubscribe();
-      collectionsSubscription.unsubscribe();
-      settingsSubscription.unsubscribe();
+      mounted = false;
+      subscriptions.forEach(subscription => {
+        try {
+          subscription?.unsubscribe();
+        } catch (err) {
+          console.error('Error unsubscribing:', err);
+        }
+      });
     };
   }, []);
 
