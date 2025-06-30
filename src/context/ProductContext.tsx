@@ -57,6 +57,54 @@ export const ProductProvider: React.FC<ProductProviderProps> = ({ children }) =>
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Helper function to validate hero product data
+  const validateHeroProduct = (data: any): HeroProduct | null => {
+    if (!data || typeof data !== 'object') {
+      console.warn('Invalid hero product data: not an object', data);
+      return null;
+    }
+
+    const requiredFields = ['id', 'title', 'description', 'image', 'ctaText', 'ctaLink', 'price'];
+    const missingFields = requiredFields.filter(field => !(field in data));
+    
+    if (missingFields.length > 0) {
+      console.warn('Invalid hero product data: missing required fields', missingFields, data);
+      return null;
+    }
+
+    // Validate types
+    if (typeof data.id !== 'string' || 
+        typeof data.title !== 'string' || 
+        typeof data.description !== 'string' || 
+        typeof data.image !== 'string' || 
+        typeof data.ctaText !== 'string' || 
+        typeof data.ctaLink !== 'string' || 
+        typeof data.price !== 'number') {
+      console.warn('Invalid hero product data: incorrect field types', data);
+      return null;
+    }
+
+    return data as HeroProduct;
+  };
+
+  // Helper function to validate brand settings data
+  const validateBrandSettings = (data: any): { brandName: string; tagline: string } | null => {
+    if (!data || typeof data !== 'object') {
+      console.warn('Invalid brand settings data: not an object', data);
+      return null;
+    }
+
+    if (typeof data.brandName !== 'string' || typeof data.tagline !== 'string') {
+      console.warn('Invalid brand settings data: incorrect field types', data);
+      return null;
+    }
+
+    return {
+      brandName: data.brandName,
+      tagline: data.tagline
+    };
+  };
+
   // Convert database row to Product type
   const dbProductToProduct = (dbProduct: any, collections: Collection[]): Product => {
     const collection = collections.find(c => c.id === dbProduct.collection_id);
@@ -109,7 +157,7 @@ export const ProductProvider: React.FC<ProductProviderProps> = ({ children }) =>
       const productsFormatted = productsData.map(p => dbProductToProduct(p, collectionsFormatted));
       setProducts(productsFormatted);
 
-      // Load site settings
+      // Load site settings with proper validation
       const { data: settingsData, error: settingsError } = await supabase
         .from('site_settings')
         .select('*');
@@ -120,14 +168,28 @@ export const ProductProvider: React.FC<ProductProviderProps> = ({ children }) =>
         const heroProductSetting = settingsData.find(s => s.key === 'hero_product');
         const brandSetting = settingsData.find(s => s.key === 'brand_settings');
 
-        setSiteSettings(prev => ({
-          ...prev,
-          ...(heroProductSetting ? { heroProduct: heroProductSetting.value } : {}),
-          ...(brandSetting ? { 
-            brandName: brandSetting.value.brandName,
-            tagline: brandSetting.value.tagline 
-          } : {}),
-        }));
+        setSiteSettings(prev => {
+          const newSettings = { ...prev };
+
+          // Validate and update hero product
+          if (heroProductSetting?.value) {
+            const validatedHeroProduct = validateHeroProduct(heroProductSetting.value);
+            if (validatedHeroProduct) {
+              newSettings.heroProduct = validatedHeroProduct;
+            }
+          }
+
+          // Validate and update brand settings
+          if (brandSetting?.value) {
+            const validatedBrandSettings = validateBrandSettings(brandSetting.value);
+            if (validatedBrandSettings) {
+              newSettings.brandName = validatedBrandSettings.brandName;
+              newSettings.tagline = validatedBrandSettings.tagline;
+            }
+          }
+
+          return newSettings;
+        });
       }
 
     } catch (err) {
