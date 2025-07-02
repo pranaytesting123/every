@@ -48,8 +48,8 @@ const Contact: React.FC = () => {
                   <div>
                     <h3 className="font-semibold text-gray-900">Phone</h3>
                     <p className="text-gray-600">Call us for immediate assistance</p>
-                    <a href="tel:+91-9347575947" className="text-blue-600 hover:underline font-medium">
-                      +91-9347575947
+                    <a href="tel:+91-9248788585" className="text-blue-600 hover:underline font-medium">
+                      +91-9248788585
                     </a>
                   </div>
                 </div>
@@ -62,7 +62,7 @@ const Contact: React.FC = () => {
                     <h3 className="font-semibold text-gray-900">WhatsApp</h3>
                     <p className="text-gray-600">Quick responses via WhatsApp</p>
                     <a 
-                      href="https://wa.me/919347575947" 
+                      href="https://wa.me/919248788585" 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="text-green-600 hover:underline font-medium"
@@ -79,8 +79,8 @@ const Contact: React.FC = () => {
                   <div>
                     <h3 className="font-semibold text-gray-900">Email</h3>
                     <p className="text-gray-600">Send us a detailed message</p>
-                    <a href="mailto:info@cataloghub.com" className="text-blue-600 hover:underline font-medium">
-                      info@cataloghub.com
+                    <a href="mailto:info@cocomanthra.com" className="text-blue-600 hover:underline font-medium">
+                      info@cocomanthra.com
                     </a>
                   </div>
                 </div>
